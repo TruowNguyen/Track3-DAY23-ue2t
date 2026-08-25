@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+from time import perf_counter
 from typing import Annotated
+from uuid import uuid4
 
 import typer
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from .graph import build_graph
 from .metrics import MetricsReport, metric_from_state, summarize_metrics, write_metrics
@@ -25,17 +28,41 @@ def run_scenarios(
     output: Annotated[Path, typer.Option("--output")],
 ) -> None:
     """Run all grading scenarios and write metrics JSON."""
+    # Batch grading cannot supply a Command(resume=...) response to an interrupt.
+    # Keep direct graph invocations available for the real interactive HITL demo.
+    os.environ["LANGGRAPH_BATCH_MODE"] = "true"
     cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
     scenarios = load_scenarios(cfg["scenarios_path"])
     checkpointer = build_checkpointer(cfg.get("checkpointer", "memory"), cfg.get("database_url"))
     graph = build_graph(checkpointer=checkpointer)
     metrics = []
+    history_verified = checkpointer is not None
     for scenario in scenarios:
+        typer.echo(f"Running {scenario.id} ...")
         state = initial_state(scenario)
+        state["thread_id"] = f"{state['thread_id']}-{uuid4().hex[:8]}"
         run_config = {"configurable": {"thread_id": state["thread_id"]}}
+        started = perf_counter()
         final_state = graph.invoke(state, config=run_config)
-        metrics.append(metric_from_state(final_state, scenario.expected_route.value, scenario.requires_approval))
+        elapsed_ms = round((perf_counter() - started) * 1000)
+        metric = metric_from_state(
+            final_state,
+            scenario.expected_route.value,
+            scenario.requires_approval,
+        )
+        metric.latency_ms = elapsed_ms
+        metrics.append(metric)
+        typer.echo(
+            f"  route={metric.actual_route} success={metric.success} latency={elapsed_ms}ms"
+        )
+        if checkpointer is not None:
+            try:
+                history = list(graph.get_state_history(run_config))
+                history_verified = history_verified and bool(history)
+            except Exception:
+                history_verified = False
     report = summarize_metrics(metrics)
+    report.resume_success = history_verified
     write_metrics(report, output)
     if cfg.get("report_path"):
         write_report(report, cfg["report_path"])
