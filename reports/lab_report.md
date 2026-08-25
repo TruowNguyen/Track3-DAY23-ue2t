@@ -1,9 +1,9 @@
 # Day 08 Lab Report
 
-## 1. Student
+## 1. Team members
 
-- Name: Nguyễn Văn Trường
-- Student ID: 2A202601974
+- Nguyễn Văn Trường — MSHV: `2A202601974` — Git alias: `TruowNguyen`
+- Lê Anh Tiến — MSHV: `2A202601145` — Git alias: `TienLee41`
 - Repository: `DAY23-2A202601974-NguyenVanTruong`
 
 ## 2. Implementation
