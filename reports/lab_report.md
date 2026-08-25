@@ -4,7 +4,7 @@
 
 - Nguyễn Văn Trường — MSHV: `2A202601974` — Git alias: `TruowNguyen`
 - Lê Anh Tiến — MSHV: `2A202601145` — Git alias: `TienLee41`
-- Repository: `DAY23-2A202601974-NguyenVanTruong`
+- Repository: `Track3-DAY23-ue2t`
 
 ## 2. Implementation
 
